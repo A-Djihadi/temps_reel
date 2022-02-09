@@ -7,4 +7,4 @@ Depot du projet de temps reel 4eme année au departement GEI de l'INSA Toulouse.
 - software: rassemble les parties logicielles du robot, du chargeur, les bibliotheques et superviseur coté raspberry et l'interface Web
 - doc: contient les sujets de TD et TP
 - aruco_markers: Script de generation des tags (aruco) utilisés sur les robots
-
+- fin
