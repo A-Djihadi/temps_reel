@@ -26,6 +26,8 @@
 #define PRIORITY_TRECEIVEFROMMON 25
 #define PRIORITY_TSTARTROBOT 20
 #define PRIORITY_TCAMERA 21
+#define PRIORITY_TBATTERY 23
+#define TIME_DELAY 1000000//1ms 
 
 /*
  * Some remarks:
@@ -123,6 +125,10 @@ void Tasks::Init() {
         cerr << "Error task create: " << strerror(-err) << endl << flush;
         exit(EXIT_FAILURE);
     }
+    if (err = rt_task_create(&th_battery, "th_move", 0, PRIORITY_TBATTERY, 0)) {
+        cerr << "Error task create: " << strerror(-err) << endl << flush;
+        exit(EXIT_FAILURE);
+    }
     cout << "Tasks created successfully" << endl << flush;
 
     /**************************************************************************************/
@@ -164,6 +170,10 @@ void Tasks::Run() {
         exit(EXIT_FAILURE);
     }
     if (err = rt_task_start(&th_move, (void(*)(void*)) & Tasks::MoveTask, this)) {
+        cerr << "Error task start: " << strerror(-err) << endl << flush;
+        exit(EXIT_FAILURE);
+    }
+    if (err = rt_task_start(&th_battery, (void(*)(void*)) & Tasks::LevelBattery, this)) {
         cerr << "Error task start: " << strerror(-err) << endl << flush;
         exit(EXIT_FAILURE);
     }
@@ -227,7 +237,7 @@ void Tasks::SendToMonTask(void* arg) {
     /**************************************************************************************/
     /* The task sendToMon starts here                                                     */
     /**************************************************************************************/
-    rt_sem_p(&sem_serverOk, TM_INFINITE);
+    rt_sem_p(&sem_serverOk, 10*TIME_DELAY);
 
     while (1) {
         cout << "wait msg to send" << endl << flush;
@@ -414,4 +424,34 @@ Message *Tasks::ReadInQueue(RT_QUEUE *queue) {
 
     return msg;
 }
+
+void Tasks::LevelBattery(void *arg) {
+    Message *msg;
+    
+    cout << "Start " << __PRETTY_FUNCTION__ << endl << flush;
+    // Synchronization barrier (waiting that all tasks are starting)
+    rt_sem_p(&sem_barrier, TM_INFINITE);
+    
+    /**************************************************************************************/
+    /* The task starts here                                                               */
+    /**************************************************************************************/
+    rt_task_set_periodic(NULL, TM_NOW, 500*TIME_DELAY);
+
+    while (1) {
+        rt_task_wait_period(NULL);
+        
+        cout << "updated level of battery :";
+        
+        rt_mutex_acquire(&mutex_robot, TM_INFINITE);
+        msg = robot.Write(robot.GetBattery());
+        rt_mutex_release(&mutex_monitor);    
+        
+        rt_mutex_acquire(&mutex_monitor, TM_INFINITE);
+        WriteInQueue(&q_messageToMon,msg);
+        rt_mutex_release(&mutex_monitor);
+        
+        
+        }
+        cout << endl << flush;
+    }
 
