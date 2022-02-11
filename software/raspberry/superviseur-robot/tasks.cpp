@@ -427,7 +427,7 @@ Message *Tasks::ReadInQueue(RT_QUEUE *queue) {
 
 void Tasks::LevelBattery(void *arg) {
     Message *msg;
-    
+   // int sr;
     cout << "Start " << __PRETTY_FUNCTION__ << endl << flush;
     // Synchronization barrier (waiting that all tasks are starting)
     rt_sem_p(&sem_barrier, TM_INFINITE);
@@ -441,14 +441,18 @@ void Tasks::LevelBattery(void *arg) {
         rt_task_wait_period(NULL);
         
         cout << "updated level of battery :";
-        
+        //mutex_acquire;
+        //sr=robotStarted;
+        //mutex_release;
+        //if (sr == 1) {
+        //}
         rt_mutex_acquire(&mutex_robot, TM_INFINITE);
         msg = robot.Write(robot.GetBattery());
-        rt_mutex_release(&mutex_monitor);    
+        rt_mutex_release(&mutex_monitor); //release_robot  
         
-        rt_mutex_acquire(&mutex_monitor, TM_INFINITE);
+        rt_mutex_acquire(&mutex_monitor, TM_INFINITE); // 
         WriteInQueue(&q_messageToMon,msg);
-        rt_mutex_release(&mutex_monitor);
+        rt_mutex_release(&mutex_monitor);//
         
         
         }
