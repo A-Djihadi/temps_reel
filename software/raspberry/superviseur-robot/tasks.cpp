@@ -427,7 +427,7 @@ Message *Tasks::ReadInQueue(RT_QUEUE *queue) {
 
 void Tasks::LevelBattery(void *arg) {
     Message *msg;
-   // int sr;
+    int rs;
     cout << "Start " << __PRETTY_FUNCTION__ << endl << flush;
     // Synchronization barrier (waiting that all tasks are starting)
     rt_sem_p(&sem_barrier, TM_INFINITE);
@@ -435,26 +435,26 @@ void Tasks::LevelBattery(void *arg) {
     /**************************************************************************************/
     /* The task starts here                                                               */
     /**************************************************************************************/
-    rt_task_set_periodic(NULL, TM_NOW, 500*TIME_DELAY);
+    rt_task_set_periodic(NULL, TM_NOW, 500000000);
 
     while (1) {
         rt_task_wait_period(NULL);
         
         cout << "updated level of battery :";
         rt_mutex_acquire(&mutex_robotStarted, TM_INFINITE);
-        sr=robotStarted;
-        rt_mutex_release(&mutex_robotStarted, TM_INFINITE);
-        if (sr == 1) {
+        rs=robotStarted;
+        rt_mutex_release(&mutex_robotStarted);
+        if (rs == 1) {
         
-        rt_mutex_acquire(&mutex_robot, TM_INFINITE);
-        msg = robot.Write(robot.GetBattery());
-        rt_mutex_release(&mutex_robot);   
+            rt_mutex_acquire(&mutex_robot, TM_INFINITE);
+            msg = robot.Write(robot.GetBattery());
+            rt_mutex_release(&mutex_robot);   
         
-        //rt_mutex_acquire(&mutex_monitor, TM_INFINITE);  
-        WriteInQueue(&q_messageToMon,msg);
-        //rt_mutex_release(&mutex_monitor);
+            //rt_mutex_acquire(&mutex_monitor, TM_INFINITE);  
+            WriteInQueue(&q_messageToMon,msg);
+            //rt_mutex_release(&mutex_monitor);
         
-        }
+         }
         }
         cout << endl << flush;
     }
