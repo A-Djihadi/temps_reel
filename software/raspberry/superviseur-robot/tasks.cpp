@@ -92,6 +92,10 @@ void Tasks::Init() {
         cerr << "Error semaphore create: " << strerror(-err) << endl << flush;
         exit(EXIT_FAILURE);
     }
+    if (err = rt_sem_create(&sem_startRobotWithWD, NULL, 0, S_FIFO)) {
+        cerr << "Error semaphore create: " << strerror(-err) << endl << flush;
+        exit(EXIT_FAILURE);
+    }
     if (err = rt_sem_create(&sem_startRobot, NULL, 0, S_FIFO)) {
         cerr << "Error semaphore create: " << strerror(-err) << endl << flush;
         exit(EXIT_FAILURE);
@@ -276,6 +280,8 @@ void Tasks::ReceiveFromMonTask(void *arg) {
             rt_sem_v(&sem_openComRobot);
         } else if (msgRcv->CompareID(MESSAGE_ROBOT_START_WITHOUT_WD)) {
             rt_sem_v(&sem_startRobot);
+        } else if (msgRcv->CompareID(MESSAGE_ROBOT_START_WITH_WD)) {
+            rt_sem_v(&sem_startRobotWithWD); 
         } else if (msgRcv->CompareID(MESSAGE_ROBOT_GO_FORWARD) ||
                 msgRcv->CompareID(MESSAGE_ROBOT_GO_BACKWARD) ||
                 msgRcv->CompareID(MESSAGE_ROBOT_GO_LEFT) ||
@@ -295,8 +301,8 @@ void Tasks::ReceiveFromMonTask(void *arg) {
  */
 void Tasks::OpenComRobot(void *arg) {
     int status;
-    int err;
-
+    int err; 
+    
     cout << "Start " << __PRETTY_FUNCTION__ << endl << flush;
     // Synchronization barrier (waiting that all tasks are starting)
     rt_sem_p(&sem_barrier, TM_INFINITE);
@@ -314,6 +320,7 @@ void Tasks::OpenComRobot(void *arg) {
         cout << ")" << endl << flush;
 
         Message * msgSend;
+ 
         if (status < 0) {
             msgSend = new Message(MESSAGE_ANSWER_NACK);
         } else {
@@ -327,6 +334,8 @@ void Tasks::OpenComRobot(void *arg) {
  * @brief Thread starting the communication with the robot.
  */
 void Tasks::StartRobotTask(void *arg) {
+    int compt=0;
+    int reinit=1;
     cout << "Start " << __PRETTY_FUNCTION__ << endl << flush;
     // Synchronization barrier (waiting that all tasks are starting)
     rt_sem_p(&sem_barrier, TM_INFINITE);
@@ -340,7 +349,21 @@ void Tasks::StartRobotTask(void *arg) {
         rt_sem_p(&sem_startRobot, TM_INFINITE);
         cout << "Start robot without watchdog (";
         rt_mutex_acquire(&mutex_robot, TM_INFINITE);
-        msgSend = robot.Write(robot.StartWithoutWD());
+        //msgSend = robot.Write(robot.StartWithoutWD());
+            while (compt<3 && reinit!=0) {
+                msgSend = robot.Write(new Message(MESSAGE_ROBOT_START_WITH_WD));
+                if (msgSend->GetID()==MESSAGE_ANSWER_COM_ERROR||msgSend->GetID()==MESSAGE_ANSWER_ROBOT_TIMEOUT||msgSend->GetID()==MESSAGE_ANSWER_ROBOT_UNKNOWN_COMMAND){ 
+                    compt++;
+                }
+                else {
+                    compt=0;
+                    reinit=0;
+                }
+            }
+            if (compt==3) {
+                cout << "Connection Lost ";
+                robot.Close();
+            }
         rt_mutex_release(&mutex_robot);
         cout << msgSend->GetID();
         cout << ")" << endl;
@@ -362,6 +385,10 @@ void Tasks::StartRobotTask(void *arg) {
 void Tasks::MoveTask(void *arg) {
     int rs;
     int cpMove;
+    int compt=0;
+    int reinit=1;
+    Message *msg;
+    Message *msgSend;
     
     cout << "Start " << __PRETTY_FUNCTION__ << endl << flush;
     // Synchronization barrier (waiting that all tasks are starting)
@@ -386,7 +413,23 @@ void Tasks::MoveTask(void *arg) {
             cout << " move: " << cpMove;
             
             rt_mutex_acquire(&mutex_robot, TM_INFINITE);
-            robot.Write(new Message((MessageID)cpMove));
+            
+            while (compt<3 && reinit!=0) {
+            
+                msg = new Message((MessageID)cpMove);
+                msgSend = robot.Write(msg);
+                if (msgSend->GetID()==MESSAGE_ANSWER_COM_ERROR||msgSend->GetID()==MESSAGE_ANSWER_ROBOT_TIMEOUT||msgSend->GetID()==MESSAGE_ANSWER_ROBOT_UNKNOWN_COMMAND){ 
+                    compt++;
+                }
+                else {
+                    compt=0;
+                    reinit=0;
+                }
+            }
+            if (compt==3) {
+                cout << "Connection Lost ";
+                robot.Close();
+            }
             rt_mutex_release(&mutex_robot);
         }
         cout << endl << flush;
@@ -428,6 +471,8 @@ Message *Tasks::ReadInQueue(RT_QUEUE *queue) {
 void Tasks::LevelBattery(void *arg) {
     Message *msg;
     int rs;
+    int reinit=1;
+    int compt=0;
     cout << "Start " << __PRETTY_FUNCTION__ << endl << flush;
     // Synchronization barrier (waiting that all tasks are starting)
     rt_sem_p(&sem_barrier, TM_INFINITE);
@@ -447,7 +492,22 @@ void Tasks::LevelBattery(void *arg) {
         if (rs == 1) {
         
             rt_mutex_acquire(&mutex_robot, TM_INFINITE);
-            msg = robot.Write(robot.GetBattery());
+            while (compt<3 && reinit!=0) {
+            
+                msg = robot.Write(robot.GetBattery());
+                if (msg->GetID()==MESSAGE_ANSWER_COM_ERROR||msg->GetID()==MESSAGE_ANSWER_ROBOT_TIMEOUT||msg->GetID()==MESSAGE_ANSWER_ROBOT_UNKNOWN_COMMAND){ 
+                    compt++;
+                }
+                else {
+                    compt=0;
+                    reinit=0;
+                }
+            }
+            if (compt==3) {
+                cout << "Connection Lost ";
+                robot.Close();
+            }
+        
             rt_mutex_release(&mutex_robot);   
         
             //rt_mutex_acquire(&mutex_monitor, TM_INFINITE);  

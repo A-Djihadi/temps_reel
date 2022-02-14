@@ -93,7 +93,7 @@ private:
     RT_SEM sem_openComRobot;
     RT_SEM sem_serverOk;
     RT_SEM sem_startRobot;
-
+    RT_SEM sem_startRobotWithWD;
     /**********************************************************************/
     /* Message queues                                                     */
     /**********************************************************************/
@@ -150,7 +150,7 @@ private:
      */
     Message *ReadInQueue(RT_QUEUE *queue);
     
-    void LevelBattery (void *arg);
+    void LevelBattery(void *arg);
 
 };
 
