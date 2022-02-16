@@ -77,6 +77,9 @@ private:
     RT_TASK th_startRobot;
     RT_TASK th_move;
     RT_TASK th_battery;
+    RT_TASK th_watchdog;
+    RT_TASK th_closeComRobot;
+
     
     /**********************************************************************/
     /* Mutex                                                              */
@@ -94,6 +97,9 @@ private:
     RT_SEM sem_serverOk;
     RT_SEM sem_startRobot;
     RT_SEM sem_startRobotWithWD;
+    RT_SEM sem_watchdog;
+    RT_SEM sem_closeComRobot;
+
     /**********************************************************************/
     /* Message queues                                                     */
     /**********************************************************************/
@@ -122,7 +128,10 @@ private:
      * @brief Thread opening communication with the robot.
      */
     void OpenComRobot(void *arg);
-
+ /**
+     * @brief Thread closing communication with the robot.
+     */
+    void CloseComRobot(void *arg);
     /**
      * @brief Thread starting the communication with the robot.
      */
