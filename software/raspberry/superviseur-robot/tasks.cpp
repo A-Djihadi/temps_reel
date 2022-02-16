@@ -28,6 +28,7 @@
 #define PRIORITY_TCAMERA 21
 #define PRIORITY_TBATTERY 23
 #define PRIORITY_TCLOSECOMROBOT 14
+#define PRIORITY_TCLOSECOMMON 13
 #define TIME_DELAY 1000000//1ms 
 
 /*
@@ -80,6 +81,10 @@ void Tasks::Init() {
         cerr << "Error semaphore create: " << strerror(-err) << endl << flush;
         exit(EXIT_FAILURE);
     } 
+     if (err = rt_sem_create(&sem_closeComMon, NULL, 0, S_FIFO)) {
+        cerr << "Error semaphore create: " << strerror(-err) << endl << flush;
+        exit(EXIT_FAILURE);
+    }
     cout << "Mutexes created successfully" << endl << flush;
 
     /**************************************************************************************/
@@ -142,6 +147,10 @@ void Tasks::Init() {
         cerr << "Error task create: " << strerror(-err) << endl << flush;
         exit(EXIT_FAILURE);
     }
+     if (err = rt_task_create(&th_closeComMon, "th_closeComMon", 0, PRIORITY_TCLOSECOMMON, 0)) {
+        cerr << "Error task create: " << strerror(-err) << endl << flush;
+        exit(EXIT_FAILURE);
+    }
     cout << "Tasks created successfully" << endl << flush;
 
     /**************************************************************************************/
@@ -191,6 +200,10 @@ void Tasks::Run() {
         exit(EXIT_FAILURE);
     }
     if (err = rt_task_start(&th_battery, (void(*)(void*)) & Tasks::LevelBattery, this)) {
+        cerr << "Error task start: " << strerror(-err) << endl << flush;
+        exit(EXIT_FAILURE);
+    }
+    if (err = rt_task_start(&th_closeComMon, (void(*)(void*)) & Tasks::ReceiveFromMonTask, this)) {
         cerr << "Error task start: " << strerror(-err) << endl << flush;
         exit(EXIT_FAILURE);
     }
@@ -287,6 +300,7 @@ void Tasks::ReceiveFromMonTask(void *arg) {
         cout << "Rcv <= " << msgRcv->ToString() << endl << flush;
 
         if (msgRcv->CompareID(MESSAGE_MONITOR_LOST)) {
+            rt_sem_v(&sem_closeComMon);
             delete(msgRcv);
             exit(-1);
         } else if (msgRcv->CompareID(MESSAGE_ROBOT_COM_OPEN)) {
@@ -307,6 +321,32 @@ void Tasks::ReceiveFromMonTask(void *arg) {
         }
         delete(msgRcv); // mus be deleted manually, no consumer
     }
+}
+
+
+/**
+ * @brief Thread closing server communication with the monitor.
+ */
+void Tasks::CloseComMon(void *arg) {
+    int status;
+
+    cout << "Start " << __PRETTY_FUNCTION__ << endl << flush;
+    // Synchronization barrier (waiting that all tasks are started)
+    rt_sem_p(&sem_barrier, TM_INFINITE);
+
+    /**************************************************************************************/
+    /* The task closing communication with the monitor starts here                                                        */
+    /**************************************************************************************/
+    rt_sem_p(&sem_closeComMon, TM_INFINITE);
+
+    rt_mutex_acquire(&mutex_monitor, TM_INFINITE);
+    monitor.Close();
+    rt_mutex_release(&mutex_monitor);
+
+    //rt_sem_broadcast(&sem_disconnectCam);
+    rt_mutex_acquire(&mutex_robot, TM_INFINITE);
+    move = MESSAGE_ROBOT_STOP;
+    rt_mutex_release(&mutex_robot);
 }
 
 /**

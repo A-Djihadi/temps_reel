@@ -79,6 +79,8 @@ private:
     RT_TASK th_battery;
     RT_TASK th_watchdog;
     RT_TASK th_closeComRobot;
+    RT_TASK th_closeComMon;
+
 
     
     /**********************************************************************/
@@ -99,6 +101,8 @@ private:
     RT_SEM sem_startRobotWithWD;
     RT_SEM sem_watchdog;
     RT_SEM sem_closeComRobot;
+    RT_SEM sem_closeComMon;
+
 
     /**********************************************************************/
     /* Message queues                                                     */
@@ -123,12 +127,18 @@ private:
      * @brief Thread receiving data from monitor.
      */
     void ReceiveFromMonTask(void *arg);
-    
+
+       /**
+     * @brief Thread closing communications with monitor.
+     */
+    void CloseComMon(void *arg);
+
     /**
      * @brief Thread opening communication with the robot.
      */
     void OpenComRobot(void *arg);
- /**
+
+    /**
      * @brief Thread closing communication with the robot.
      */
     void CloseComRobot(void *arg);
