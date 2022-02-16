@@ -417,6 +417,33 @@ void Tasks::CloseComRobot(void *arg) {
 }
 
 /**
+ * @brief Thread starting watchdog for startRobotWithWD.
+ */
+//void Tasks::Watchdog(void *arg) {
+//    
+//    cout << "Start " << __PRETTY_FUNCTION__ << endl << flush;
+//    // Synchronization barrier (waiting that all tasks are starting and Robot is started)
+//    rt_sem_p(&sem_barrier, TM_INFINITE);
+//    rt_sem_p(&sem_startRobot, TM_INFINITE);
+//    /**************************************************************************************/
+//    /* The task starts here                                                               */
+//    /**************************************************************************************/
+//    Message * msgReload;
+//    int count_WD =3;
+//    rt_task_set_periodic(NULL, TM_NOW, 1000000000);
+//    
+//    while (count_WD>0) {
+//        rt_task_wait_period(NULL);
+//        count_WD--;
+//        msgReload = monitor.Read();
+//        if(msgReload->CompareID(MESSAGE_ROBOT_RELOAD_WD){
+//            count_WD =3;
+//        }
+//    }
+//}
+
+
+/**
  * @brief Thread starting the communication with the robot.
  */
 void Tasks::StartRobotTask(void *arg) {
