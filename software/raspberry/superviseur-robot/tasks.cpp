@@ -453,6 +453,7 @@ void Tasks::CloseComRobot(void *arg) {
 void Tasks::StartRobotTask(void *arg) {
     int compt=0;
     int reinit=1;
+    
     cout << "Start " << __PRETTY_FUNCTION__ << endl << flush;
     // Synchronization barrier (waiting that all tasks are starting)
     rt_sem_p(&sem_barrier, TM_INFINITE);
@@ -461,26 +462,28 @@ void Tasks::StartRobotTask(void *arg) {
     /* The task startRobot starts here                                                    */
     /**************************************************************************************/
     while (1) {
-
         Message * msgSend;
+        
         rt_sem_p(&sem_startRobot, TM_INFINITE);
         cout << "Start robot without watchdog (";
         rt_mutex_acquire(&mutex_robot, TM_INFINITE);
-        //msgSend = robot.Write(robot.StartWithoutWD());
-            while (compt<3 && reinit!=0) {
-                msgSend = robot.Write(new Message(MESSAGE_ROBOT_START_WITH_WD));
+        msgSend = robot.Write(robot.StartWithoutWD());
+            /**while (compt<3 && reinit!=0) {
+                msgSend = robot.Write(robot.StartWithoutWD());
                 if (msgSend->GetID()==MESSAGE_ANSWER_COM_ERROR||msgSend->GetID()==MESSAGE_ANSWER_ROBOT_TIMEOUT||msgSend->GetID()==MESSAGE_ANSWER_ROBOT_UNKNOWN_COMMAND){ 
                     compt++;
                 }
                 else {
+                    cout << "Message received" << compt << endl << flush;
                     compt=0;
                     reinit=0;
                 }
             }
+        cout << "Valeur du compteur " << compt << endl << flush;
             if (compt==3) {
                 cout << "Connection Lost ";
-                rt_sem_v(&sem_closeComRobot);
-            }
+                robot.Close();
+            }*/
         rt_mutex_release(&mutex_robot);
         cout << msgSend->GetID();
         cout << ")" << endl;
@@ -530,8 +533,9 @@ void Tasks::MoveTask(void *arg) {
             cout << " move: " << cpMove;
             
             rt_mutex_acquire(&mutex_robot, TM_INFINITE);
-            
-            while (compt<3 && reinit!=0) {
+            msg = new Message((MessageID)cpMove);
+            msgSend = robot.Write(msg);
+            /**while (compt<3 && reinit!=0) {
             
                 msg = new Message((MessageID)cpMove);
                 msgSend = robot.Write(msg);
@@ -539,14 +543,16 @@ void Tasks::MoveTask(void *arg) {
                     compt++;
                 }
                 else {
+                    cout << "Mesage received " << compt << endl << flush;
                     compt=0;
                     reinit=0;
                 }
             }
+            cout << "Valeur du compteur " << compt << endl << flush;
             if (compt==3) {
                 cout << "Connection Lost ";
-                rt_sem_v(&sem_closeComMon);
-            }
+                robot.Close();
+            }*/
             rt_mutex_release(&mutex_robot);
         }
         cout << endl << flush;
@@ -609,28 +615,31 @@ void Tasks::LevelBattery(void *arg) {
         if (rs == 1) {
         
             rt_mutex_acquire(&mutex_robot, TM_INFINITE);
-            while (compt<3 && reinit!=0) {
-            
+            msg = robot.Write(robot.GetBattery());
+            /**while (compt<3 && reinit==1) {
+                cout << " On estdans le while " << compt << endl << flush;
                 msg = robot.Write(robot.GetBattery());
                 if (msg->GetID()==MESSAGE_ANSWER_COM_ERROR||msg->GetID()==MESSAGE_ANSWER_ROBOT_TIMEOUT||msg->GetID()==MESSAGE_ANSWER_ROBOT_UNKNOWN_COMMAND){ 
                     compt++;
                 }
                 else {
+                    cout << "Message received" << compt << endl << flush;
                     compt=0;
                     reinit=0;
                 }
             }
+            cout << "Valeur du compteur " << compt << endl << flush;
             if (compt==3) {
                 cout << "Connection Lost ";
-                rt_sem_v(&sem_closeComMon);
-            }
+                robot.Close();
+            }*/
         
             rt_mutex_release(&mutex_robot);   
-        
+            cout << "On a release ";
             //rt_mutex_acquire(&mutex_monitor, TM_INFINITE);  
             WriteInQueue(&q_messageToMon,msg);
             //rt_mutex_release(&mutex_monitor);
-        
+            cout << "Aprés write Que";
          }
         }
         cout << endl << flush;
