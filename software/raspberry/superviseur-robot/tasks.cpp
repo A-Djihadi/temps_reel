@@ -187,8 +187,8 @@ void Tasks::Run() {
         cerr << "Error task start: " << strerror(-err) << endl << flush;
         exit(EXIT_FAILURE);
     }
-    if (err = rt_task_create(&th_closeComRobot, "th_closeComRobot", 0, PRIORITY_TCLOSECOMROBOT, 0)) {
-        cerr << "Error task create: " << strerror(-err) << endl << flush;
+    if (err = rt_task_start(&th_closeComRobot, (void(*)(void*)) & Tasks::CloseComRobot, this)) {
+        cerr << "Error task start: " << strerror(-err) << endl << flush;
         exit(EXIT_FAILURE);
     }
     if (err = rt_task_start(&th_startRobot, (void(*)(void*)) & Tasks::StartRobotTask, this)) {
@@ -203,7 +203,7 @@ void Tasks::Run() {
         cerr << "Error task start: " << strerror(-err) << endl << flush;
         exit(EXIT_FAILURE);
     }
-    if (err = rt_task_start(&th_closeComMon, (void(*)(void*)) & Tasks::ReceiveFromMonTask, this)) {
+    if (err = rt_task_start(&th_closeComMon, (void(*)(void*)) & Tasks::CloseComMon, this)) {
         cerr << "Error task start: " << strerror(-err) << endl << flush;
         exit(EXIT_FAILURE);
     }
@@ -337,16 +337,20 @@ void Tasks::CloseComMon(void *arg) {
     /**************************************************************************************/
     /* The task closing communication with the monitor starts here                                                        */
     /**************************************************************************************/
-    rt_sem_p(&sem_closeComMon, TM_INFINITE);
-
-    rt_mutex_acquire(&mutex_monitor, TM_INFINITE);
-    monitor.Close();
-    rt_mutex_release(&mutex_monitor);
-
-    //rt_sem_broadcast(&sem_disconnectCam);
-    rt_mutex_acquire(&mutex_robot, TM_INFINITE);
-    move = MESSAGE_ROBOT_STOP;
-    rt_mutex_release(&mutex_robot);
+    while (1) {
+        rt_sem_p(&sem_closeComMon, TM_INFINITE);
+        cout << "Close com with monitor(";
+        rt_mutex_acquire(&mutex_monitor, TM_INFINITE);
+        monitor.Close();
+        rt_mutex_release(&mutex_monitor);
+        cout << status;
+        cout << ")" << endl << flush;
+        
+        //rt_sem_broadcast(&sem_disconnectCam);
+        rt_mutex_acquire(&mutex_robot, TM_INFINITE);
+        move = MESSAGE_ROBOT_STOP;
+        rt_mutex_release(&mutex_robot);
+    }
 }
 
 /**
@@ -475,7 +479,7 @@ void Tasks::StartRobotTask(void *arg) {
             }
             if (compt==3) {
                 cout << "Connection Lost ";
-                robot.Close();
+                rt_sem_v(&sem_closeComRobot);
             }
         rt_mutex_release(&mutex_robot);
         cout << msgSend->GetID();
@@ -541,7 +545,7 @@ void Tasks::MoveTask(void *arg) {
             }
             if (compt==3) {
                 cout << "Connection Lost ";
-                robot.Close();
+                rt_sem_v(&sem_closeComMon);
             }
             rt_mutex_release(&mutex_robot);
         }
@@ -618,7 +622,7 @@ void Tasks::LevelBattery(void *arg) {
             }
             if (compt==3) {
                 cout << "Connection Lost ";
-                robot.Close();
+                rt_sem_v(&sem_closeComMon);
             }
         
             rt_mutex_release(&mutex_robot);   
