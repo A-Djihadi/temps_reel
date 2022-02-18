@@ -64,6 +64,8 @@ private:
     /**********************************************************************/
     ComMonitor monitor;
     ComRobot robot;
+    Camera camera;
+     
     int robotStarted = 0;
     int move = MESSAGE_ROBOT_STOP;
     
@@ -77,9 +79,11 @@ private:
     RT_TASK th_startRobot;
     RT_TASK th_move;
     RT_TASK th_battery;
-    RT_TASK th_watchdog;
-    RT_TASK th_closeComRobot;
-    RT_TASK th_closeComMon;
+    RT_TASK th_startRobotWD;
+    RT_TASK th_startCamera;
+    RT_TASK th_periodicImage;
+    //RT_TASK th_closeComRobot;
+    //RT_TASK th_closeComMon;
 
 
     
@@ -90,6 +94,7 @@ private:
     RT_MUTEX mutex_robot;
     RT_MUTEX mutex_robotStarted;
     RT_MUTEX mutex_move;
+    RT_MUTEX mutex_camera;
 
     /**********************************************************************/
     /* Semaphores                                                         */
@@ -98,10 +103,12 @@ private:
     RT_SEM sem_openComRobot;
     RT_SEM sem_serverOk;
     RT_SEM sem_startRobot;
-    RT_SEM sem_startRobotWithWD;
+    RT_SEM sem_startRobotWD;
     RT_SEM sem_watchdog;
-    RT_SEM sem_closeComRobot;
-    RT_SEM sem_closeComMon;
+    RT_SEM sem_startCamera;
+    RT_SEM sem_periodicImage;
+    //RT_SEM sem_closeComRobot;
+    //RT_SEM sem_closeComMon;
 
 
     /**********************************************************************/
@@ -118,7 +125,7 @@ private:
      */
     void ServerTask(void *arg);
      
-    /**
+    /**startRobot
      * @brief Thread sending data to monitor.
      */
     void SendToMonTask(void *arg);
@@ -142,10 +149,24 @@ private:
      * @brief Thread closing communication with the robot.
      */
     void CloseComRobot(void *arg);
+    
     /**
      * @brief Thread starting the communication with the robot.
      */
     void StartRobotTask(void *arg);
+    
+    
+    /**
+     * @brief Thread starting the communication with the robot.
+     */
+    void StartRobotTaskWD(void *arg);
+    
+    
+        /**
+     * @brief Thread starting the communication with the robot.
+     */
+    void Watchdog(void *arg);
+    
     
     /**
      * @brief Thread handling control of the robot.
@@ -170,6 +191,17 @@ private:
     Message *ReadInQueue(RT_QUEUE *queue);
     
     void LevelBattery(void *arg);
+    
+    
+    /**
+    * @brief Thread handling the start of the Camera
+    */
+    void StartCameraTask(void *arg);
+
+    /**
+    * @brief Thread handling the sending of a periodic image to the monitor
+    */
+    void PeriodicImageTask(void *arg);
 
 };
 
