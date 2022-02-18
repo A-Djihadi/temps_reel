@@ -222,6 +222,10 @@ void Tasks::Run() {
         cerr << "Error task start: " << strerror(-err) << endl << flush;
         exit(EXIT_FAILURE);
     }
+    if (err = rt_task_start(&th_startRobotWD, (void(*)(void*)) & Tasks::StartRobotTaskWD, this)) {
+        cerr << "Error task start: " << strerror(-err) << endl << flush;
+        exit(EXIT_FAILURE);
+    }
     if (err = rt_task_start(&th_move, (void(*)(void*)) & Tasks::MoveTask, this)) {
         cerr << "Error task start: " << strerror(-err) << endl << flush;
         exit(EXIT_FAILURE);
@@ -477,22 +481,23 @@ void Tasks::StartRobotTask(void *arg) {
         cout << "Start robot without watchdog (";
         rt_mutex_acquire(&mutex_robot, TM_INFINITE);
 
-            while (compt<3 && reinit!=0) {
-                msgSend = robot.Write(robot.StartWithoutWD());
-                if (msgSend->GetID()==MESSAGE_ANSWER_COM_ERROR||msgSend->GetID()==MESSAGE_ANSWER_ROBOT_TIMEOUT||msgSend->GetID()==MESSAGE_ANSWER_ROBOT_UNKNOWN_COMMAND){ 
-                    compt++;
-                }
-                else {
-                    cout << "Message received" << compt << endl << flush;
-                    compt=0;
-                    reinit=0;
-                }
+        while (compt<3 && reinit!=0) {
+            msgSend = robot.Write(robot.StartWithoutWD());
+            if (msgSend->GetID()==MESSAGE_ANSWER_COM_ERROR||msgSend->GetID()==MESSAGE_ANSWER_ROBOT_TIMEOUT||msgSend->GetID()==MESSAGE_ANSWER_ROBOT_UNKNOWN_COMMAND){ 
+                compt++;
             }
+            else {
+                cout << "Message received" << compt << endl << flush;
+                compt=0;
+                reinit=0;
+            }
+        }
         cout << "Valeur du compteur " << compt << endl << flush;
-            if (compt==3) {
-                cout << "Connection Lost ";
-                robot.Close();
-            }
+        if (compt==3) {
+            cout << "Connection Lost ";
+            robot.Close();
+        }
+        
         rt_mutex_release(&mutex_robot);
         cout << msgSend->GetID();
         cout << ")" << endl;
@@ -521,12 +526,31 @@ void Tasks::StartRobotTaskWD(void *arg) {
     /* The task startRobot starts here                                                    */
     /**************************************************************************************/
     while(1) {
+        Message * msgSend;
+        int compt=0;
+        int reinit=1;
         
-        Message *msgSend;
         rt_sem_p(&sem_startRobotWD, TM_INFINITE);
         cout << "Start robot with watchdog (";
         rt_mutex_acquire(&mutex_robot, TM_INFINITE);
-        msgSend = robot.Write(robot.StartWithWD());
+;
+        while (compt<3 && reinit!=0) {
+            msgSend = robot.Write(robot.StartWithWD());
+            if (msgSend->GetID()==MESSAGE_ANSWER_COM_ERROR||msgSend->GetID()==MESSAGE_ANSWER_ROBOT_TIMEOUT||msgSend->GetID()==MESSAGE_ANSWER_ROBOT_UNKNOWN_COMMAND){ 
+                compt++;
+            }
+            else {
+                cout << "Message received" << compt << endl << flush;
+                compt=0;
+                reinit=0;
+            }
+        }
+        cout << "Valeur du compteur " << compt << endl << flush;
+        if (compt==3) {
+            cout << "Connection Lost ";
+            robot.Close();
+        }
+        
         rt_mutex_release(&mutex_robot);
         
         cout << msgSend->GetID();
@@ -550,7 +574,6 @@ void Tasks::StartRobotTaskWD(void *arg) {
  */
 void Tasks::Watchdog(void *arg) {
     int rs;
-    Message * msgSend;
     
     cout << "Start " << __PRETTY_FUNCTION__ << endl << flush;
   //Synchronization barrier (waiting that all tasks are starting and Robot is started)
@@ -562,13 +585,35 @@ void Tasks::Watchdog(void *arg) {
     rt_task_set_periodic(NULL, TM_NOW, 50*TIME_DELAY);
    
     while (1) {
+        Message * msgSend;
+        int compt=0;
+        int reinit=1;
+        
+        
         rt_task_wait_period(NULL);
         rt_mutex_acquire(&mutex_robotStarted, TM_INFINITE);
         rs = robotStarted;
         rt_mutex_release(&mutex_robotStarted);
         if (rs==1){ 
             rt_mutex_acquire(&mutex_robot, TM_INFINITE);
-            msgSend = robot.Write(ComRobot::ReloadWD());
+            
+            while (compt<3 && reinit!=0) {
+                msgSend = robot.Write(ComRobot::ReloadWD());
+                if (msgSend->GetID()==MESSAGE_ANSWER_COM_ERROR||msgSend->GetID()==MESSAGE_ANSWER_ROBOT_TIMEOUT||msgSend->GetID()==MESSAGE_ANSWER_ROBOT_UNKNOWN_COMMAND){ 
+                    compt++;
+                }
+                else {
+                    cout << "Message received" << compt << endl << flush;
+                    compt=0;
+                    reinit=0;
+                }
+            }
+            cout << "Valeur du compteur " << compt << endl << flush;
+            if (compt==3) {
+                cout << "Connection Lost ";
+                robot.Close();
+            }
+            
             rt_mutex_release(&mutex_robot);
             cout << endl << msgSend -> ToString() << flush;
         }
