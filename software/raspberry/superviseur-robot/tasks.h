@@ -82,7 +82,8 @@ private:
     RT_TASK th_startRobotWD;
     RT_TASK th_startCamera;
     RT_TASK th_periodicImage;
-    //RT_TASK th_closeComRobot;
+    RT_TASK th_closeComRobot;
+    RT_TASK th_wdReload;
     //RT_TASK th_closeComMon;
 
 
@@ -93,6 +94,7 @@ private:
     RT_MUTEX mutex_monitor;
     RT_MUTEX mutex_robot;
     RT_MUTEX mutex_robotStarted;
+    RT_MUTEX mutex_robotStartedWD;
     RT_MUTEX mutex_move;
     RT_MUTEX mutex_camera;
 
@@ -107,7 +109,7 @@ private:
     RT_SEM sem_watchdog;
     RT_SEM sem_startCamera;
     RT_SEM sem_periodicImage;
-    //RT_SEM sem_closeComRobot;
+    RT_SEM sem_closeComRobot;
     //RT_SEM sem_closeComMon;
 
 
